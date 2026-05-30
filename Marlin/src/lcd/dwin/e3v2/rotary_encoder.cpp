@@ -56,6 +56,7 @@ extern uint8_t record_lcd_flag;
 #if ENABLED(DWIN_LCD_BEEP)
   uint8_t toggle_LCDBeep;
   uint8_t toggle_PreHAlert;
+  uint8_t toggle_M300;
 #endif
 
 

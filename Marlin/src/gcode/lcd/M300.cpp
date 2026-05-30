@@ -28,11 +28,18 @@
 
 #include "../../lcd/marlinui.h" // i2c-based BUZZ
 #include "../../libs/buzzer.h"  // Buzzer, if possible
+#if ENABLED(DWIN_LCD_BEEP)
+  #include "../../lcd/dwin/e3v2/rotary_encoder.h"
+#endif
 
 /**
  * M300: Play beep sound S<frequency Hz> P<duration ms>
  */
 void GcodeSuite::M300() {
+  #if ENABLED(DWIN_LCD_BEEP)
+    if (!toggle_M300) return;
+  #endif
+
   uint16_t const frequency = parser.ushortval('S', 260);
   uint16_t duration = parser.ushortval('P', 1000);
 

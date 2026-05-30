@@ -7113,8 +7113,12 @@ void Draw_Beeper_Menu(){
   Draw_Menu_Line(2, ICON_Contact);
   DWIN_ICON_Show(ICON, toggle_PreHAlert ? ICON_LEVEL_CALIBRATION_ON : ICON_LEVEL_CALIBRATION_OFF, 192, MBASE(2) + JPN_OFFSET);
 
-  DWIN_ICON_Show(HMI_flag.language, LANGUAGE_Store, 60, MBASE(3) + JPN_OFFSET);
-  Draw_Menu_Line(3, ICON_WriteEEPROM); 
+  DWIN_Draw_Label(MBASE(3), F("M300 G-code"));
+  Draw_Menu_Line(3, ICON_Contact);
+  DWIN_ICON_Show(ICON, toggle_M300 ? ICON_LEVEL_CALIBRATION_ON : ICON_LEVEL_CALIBRATION_OFF, 192, MBASE(3) + JPN_OFFSET);
+
+  DWIN_ICON_Show(HMI_flag.language, LANGUAGE_Store, 60, MBASE(4) + JPN_OFFSET);
+  Draw_Menu_Line(4, ICON_WriteEEPROM);
   
 }
 
@@ -7182,7 +7186,7 @@ void HMI_Beeper_Menu(){
   // Avoid flicker by updating only the previous menu
   if (encoder_diffState == ENCODER_DIFF_CW)
   {
-    if (select_beeper.inc(1  + 3))
+    if (select_beeper.inc(1  + 4))
       Move_Highlight(1, select_beeper.now);
   }
   else if (encoder_diffState == ENCODER_DIFF_CCW)
@@ -7207,7 +7211,11 @@ void HMI_Beeper_Menu(){
       toggle_PreHAlert = !toggle_PreHAlert;
       Draw_Beeper_Menu();
     break;
-    case 3:
+    case 3: // Toggle M300 G-code tones
+      toggle_M300 = !toggle_M300;
+      Draw_Beeper_Menu();
+      break;
+    case 4:
       settings.save();
       break;
     }

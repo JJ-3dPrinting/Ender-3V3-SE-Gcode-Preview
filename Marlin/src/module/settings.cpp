@@ -36,7 +36,7 @@
  */
 
 // Change EEPROM version if the structure changes
-#define EEPROM_VERSION "V90"
+#define EEPROM_VERSION "V91"
 #define EEPROM_OFFSET 100
 
 // Check the integrity of data offsets.
@@ -495,6 +495,7 @@ typedef struct SettingsDataStruct {
   #if ENABLED(DWIN_LCD_BEEP)
     uint8_t toggleLCDBeep;
     uint8_t toggle_PreHAlert;
+    uint8_t toggle_M300;
   #endif     
 
   // LCD Brightness settings
@@ -1498,6 +1499,9 @@ void MarlinSettings::postprocess() {
 
       uint8_t prealert = toggle_PreHAlert;
       EEPROM_WRITE(prealert);
+
+      uint8_t m300 = toggle_M300;
+      EEPROM_WRITE(m300);
     }
     #endif
 
@@ -2481,6 +2485,10 @@ void MarlinSettings::postprocess() {
         uint8_t prealert;
         EEPROM_READ(prealert); //Read LCD_Beeper state
         toggle_PreHAlert = (prealert > 0) ? 1 : 0;
+
+        uint8_t m300;
+        EEPROM_READ(m300); //Read M300 state
+        toggle_M300 = (m300 > 0) ? 1 : 0;
       }
       #endif
 
@@ -2848,6 +2856,11 @@ void MarlinSettings::reset() {
   // Buzzer enable/disable
   //
   TERN_(SOUND_MENU_ITEM, ui.buzzer_enabled = true);
+  #if ENABLED(DWIN_LCD_BEEP)
+    toggle_LCDBeep = 1;
+    toggle_PreHAlert = 1;
+    toggle_M300 = 1;
+  #endif
 
   //
   // Magnetic Parking Extruder
@@ -4119,6 +4132,7 @@ void MarlinSettings::reset() {
       SERIAL_ECHOLN("DISPLAY Settings:");
       SERIAL_ECHOLNPAIR("Buzzer ON/OFF: ", toggle_LCDBeep);
       SERIAL_ECHOLNPAIR("Preheat Alert ON/OFF: ", toggle_PreHAlert);
+      SERIAL_ECHOLNPAIR("M300 ON/OFF: ", toggle_M300);
       SERIAL_ECHOLNPAIR("MAX BRIGHTNESS: ", MAX_SCREEN_BRIGHTNESS);
       SERIAL_ECHOLNPAIR("DIMM BRIGHTNESS: ", DIMM_SCREEN_BRIGHTNESS);
       SERIAL_ECHOLNPAIR("AUTO OFF TIME: ", TURN_OFF_TIME);
