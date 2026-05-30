@@ -126,7 +126,7 @@ enum processID : uint8_t {
   Dimm_Bright,
   DimmTime,
   ZHeight,
-  ABLMaxPoints,
+  ABLMaxPointsID,
   Beeper,
   HomeOff,
   HomeOffX,

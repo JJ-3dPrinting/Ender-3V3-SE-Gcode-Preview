@@ -101,12 +101,10 @@ public:
     int abl_probe_index;
   #endif
 
-  #if ENABLED(AUTO_BED_LEVELING_LINEAR)
+  #if ABL_USES_GRID
     int abl_points;
   #elif ENABLED(AUTO_BED_LEVELING_3POINT)
     static constexpr int abl_points = 3;
-  #elif ABL_USES_GRID
-    static constexpr int abl_points = GRID_MAX_POINTS;
   #endif
 
   #if ABL_USES_GRID
@@ -118,11 +116,10 @@ public:
 
     xy_float_t gridSpacing; // = { 0.0f, 0.0f }
 
+    xy_uint8_t grid_points;
+
     #if ENABLED(AUTO_BED_LEVELING_LINEAR)
-      bool                topography_map;
-      xy_uint8_t          grid_points;
-    #else // Bilinear
-      static constexpr xy_uint8_t grid_points = { GRID_MAX_POINTS_X, GRID_MAX_POINTS_Y };
+      bool topography_map;
     #endif
 
     #if ENABLED(AUTO_BED_LEVELING_BILINEAR)
@@ -138,8 +135,7 @@ public:
   #endif
 };
 
-#if ABL_USES_GRID && EITHER(AUTO_BED_LEVELING_3POINT, AUTO_BED_LEVELING_BILINEAR)
-  constexpr xy_uint8_t G29_State::grid_points;
+#if ENABLED(AUTO_BED_LEVELING_3POINT)
   constexpr int G29_State::abl_points;
 #endif
 
@@ -371,17 +367,19 @@ G29_TYPE GcodeSuite::G29()
 
     abl.dryrun = parser.boolval('D') || TERN0(PROBE_MANUALLY, no_action);
 
-    #if ENABLED(AUTO_BED_LEVELING_LINEAR)
+    #if ABL_USES_GRID
 
-      incremental_LSF_reset(&lsf_results);
+      #if ENABLED(DWIN_CREALITY_LCD)
+        const uint8_t default_grid_points_x = CGRID_MAX_POINTS_X,
+                      default_grid_points_y = CGRID_MAX_POINTS_X;
+      #else
+        const uint8_t default_grid_points_x = GRID_MAX_POINTS_X,
+                      default_grid_points_y = GRID_MAX_POINTS_Y;
+      #endif
 
-      abl.topography_map = abl.verbose_level > 2 || parser.boolval('T');
-
-      // X and Y specify points in each direction, overriding the default
-      // These values may be saved with the completed mesh
       abl.grid_points.set(
-        parser.byteval('X', GRID_MAX_POINTS_X),
-        parser.byteval('Y', GRID_MAX_POINTS_Y)
+        parser.byteval('X', default_grid_points_x),
+        parser.byteval('Y', default_grid_points_y)
       );
       if (parser.seenval('P')) abl.grid_points.x = abl.grid_points.y = parser.value_int();
 
@@ -395,6 +393,14 @@ G29_TYPE GcodeSuite::G29()
       }
 
       abl.abl_points = abl.grid_points.x * abl.grid_points.y;
+
+    #endif
+
+    #if ENABLED(AUTO_BED_LEVELING_LINEAR)
+
+      incremental_LSF_reset(&lsf_results);
+
+      abl.topography_map = abl.verbose_level > 2 || parser.boolval('T');
       abl.mean = 0;
 
     #elif ENABLED(AUTO_BED_LEVELING_BILINEAR)
@@ -949,7 +955,7 @@ G29_TYPE GcodeSuite::G29()
       DWIN_CompletedLeveling();  
     #endif
   #else
-    if(((GRID_MAX_POINTS_Y*GRID_MAX_POINTS_X)==G29_level_num)&&(!HMI_flag.G29_level_not_normal))
+    if((abl.abl_points==G29_level_num)&&(!HMI_flag.G29_level_not_normal))
     {
       HMI_flag.G29_finish_flag=true; //如果16点的调平值都正常
     } else {

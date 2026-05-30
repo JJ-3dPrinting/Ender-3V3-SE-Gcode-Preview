@@ -1251,8 +1251,8 @@ void Scroll_Menu_Language(uint8_t dir)
 static xy_int8_t Converted_Grid_Point(uint8_t select_num)
 {
   xy_int8_t grid_point;
-  grid_point.x = select_num / GRID_MAX_POINTS_X;
-  grid_point.y = select_num % GRID_MAX_POINTS_Y;
+  grid_point.x = select_num / CGRID_MAX_POINTS_X;
+  grid_point.y = select_num % CGRID_MAX_POINTS_X;
   return grid_point;
 }
 // static void Toggle_Checkbox(xy_int8_t mesh_Curr, xy_int8_t mesh_Last, uint8_t dir)
@@ -2053,8 +2053,8 @@ void Draw_Control_Menu()
 #endif
 #endif
   }
-  if(PVISI(CONTROL_CASE_ABLMAXPOINTS))
-    Item_Control_ABLMaxPoints(PSCROL(CONTROL_CASE_ABLMAXPOINTS));
+  if (CVISI(CONTROL_CASE_ABLMAXPOINTS))
+    Item_Control_ABLMaxPoints(CSCROL(CONTROL_CASE_ABLMAXPOINTS));
   if (CVISI(CONTROL_CASE_RESET))
     DWIN_ICON_Show(HMI_flag.language, LANGUAGE_Reset, 42, CLINE(CONTROL_CASE_RESET) + JPN_OFFSET);
   if (CVISI(CONTROL_CASE_INFO))
@@ -3075,10 +3075,10 @@ void Draw_Dots_On_Screen(xy_int8_t *mesh_Count, uint8_t Set_En, uint16_t Set_BG_
 void Refresh_Leveling_Value() // Refresh leveling values
 {
   xy_int8_t Grid_Count = {0};
-  for (Grid_Count.x = 0; Grid_Count.x < GRID_MAX_POINTS_X; Grid_Count.x++)
+  for (Grid_Count.x = 0; Grid_Count.x < CGRID_MAX_POINTS_X; Grid_Count.x++)
   {
     // if(2==Grid_Count.x)delay(50); //This parameter must be present, otherwise the refresh will be abnormal.
-    for (Grid_Count.y = 0; Grid_Count.y < GRID_MAX_POINTS_Y; Grid_Count.y++)
+    for (Grid_Count.y = 0; Grid_Count.y < CGRID_MAX_POINTS_X; Grid_Count.y++)
     {
       Draw_Dots_On_Screen(&Grid_Count, 0, 0);
       delay(20); // This parameter must be present, otherwise the refresh will be abnormal.
@@ -7303,7 +7303,7 @@ void HMI_ABLMaxPoints(){
 
   if (Apply_Encoder(encoder_diffState,  HMI_ValueStruct.ABL_MaxPoints)) {
     EncoderRate.enabled = false;
-    LIMIT(HMI_ValueStruct.ABL_MaxPoints, 3, 10);
+    LIMIT(HMI_ValueStruct.ABL_MaxPoints, 3, GRID_MAX_POINTS_X);
     checkkey = Control;
     DWIN_Draw_IntValue(true, true, 0, font8x16, Color_White, Color_Bg_Black, 2, VALUERANGE_X, MBASE(CONTROL_CASE_ABLMAXPOINTS + MROWS - index_control) , HMI_ValueStruct.ABL_MaxPoints);
     CGRID_MAX_POINTS_X = HMI_ValueStruct.ABL_MaxPoints;
@@ -7311,7 +7311,7 @@ void HMI_ABLMaxPoints(){
     return;
   }
 
-  LIMIT(HMI_ValueStruct.ABL_MaxPoints, 3, 10);
+  LIMIT(HMI_ValueStruct.ABL_MaxPoints, 3, GRID_MAX_POINTS_X);
   DWIN_Draw_IntValue(true, true, 0, font8x16, Color_White, Color_Bg_Black, 2, VALUERANGE_X, MBASE(CONTROL_CASE_ABLMAXPOINTS + MROWS - index_control) , HMI_ValueStruct.ABL_MaxPoints);
 }
 
@@ -7891,7 +7891,7 @@ void HMI_Control()
         switch (index_control)
         { // Last menu items
         case CONTROL_CASE_ABLMAXPOINTS:
-          Item_Control_ABLMaxPoints(MBASE(MROWS));
+          Item_Control_ABLMaxPoints(MROWS);
           Draw_Menu_Icon(MROWS, ICON_Edit_Level_Data);
           break;
         case CONTROL_CASE_RESET:
@@ -7954,20 +7954,23 @@ void HMI_Control()
 
            }
         }else if (index_control == 8){
+          Item_Control_ABLMaxPoints(0);
+          Draw_Menu_Icon(0, ICON_Edit_Level_Data);
+        }else if (index_control == 9){
           if (HMI_flag.language < Language_Max)
           {
             Draw_Menu_Icon(0, ICON_WriteEEPROM);
             DWIN_ICON_Show(HMI_flag.language, LANGUAGE_Store, 42, MBASE(0) + JPN_OFFSET);
 
            }
-        }else if (index_control == 9){
+        }else if (index_control == 10){
           if (HMI_flag.language < Language_Max)
           {
             Draw_Menu_Icon(0, ICON_ReadEEPROM);
             DWIN_ICON_Show(HMI_flag.language, LANGUAGE_Read, 42, MBASE(0) + JPN_OFFSET);
 
            }
-        }else if (index_control == 10){
+        }else if (index_control == 11){
           if (HMI_flag.language < Language_Max)
           {
             Draw_Menu_Icon(0, ICON_Edit_Level_Data);
@@ -8025,9 +8028,12 @@ void HMI_Control()
       Draw_Motion_Menu();
       break;
 
-    case CONTROL_CASE_ABLMAXPOINTS: // Z height
-      checkkey = ABLMaxPoints;
-      DWIN_Draw_IntValue(true, true, 0, font8x16, Color_White, Color_Bg_Black, 2, VALUERANGE_X, MBASE(PREPARE_CASE_ZHEIGHT + MROWS - index_prepare) , CGRID_MAX_POINTS_X);
+    case CONTROL_CASE_ABLMAXPOINTS:
+      checkkey = ABLMaxPointsID;
+      HMI_ValueStruct.ABL_MaxPoints = CGRID_MAX_POINTS_X;
+      LIMIT(HMI_ValueStruct.ABL_MaxPoints, 3, GRID_MAX_POINTS_X);
+      CGRID_MAX_POINTS_X = HMI_ValueStruct.ABL_MaxPoints;
+      DWIN_Draw_IntValue(true, true, 0, font8x16, Color_White, Color_Bg_Black, 2, VALUERANGE_X, MBASE(CONTROL_CASE_ABLMAXPOINTS + MROWS - index_control) , HMI_ValueStruct.ABL_MaxPoints);
       EncoderRate.enabled = true;
       break;
 #if ENABLED(EEPROM_SETTINGS)
@@ -8168,7 +8174,7 @@ void HMI_Leveling_Edit()
     return;
   if (encoder_diffState == ENCODER_DIFF_CW)
   {
-    if (select_level.inc(GRID_MAX_POINTS_X * GRID_MAX_POINTS_Y))
+    if (select_level.inc(CGRID_MAX_POINTS_X * CGRID_MAX_POINTS_X))
     {
       Level_Scroll_Menu(DWIN_SCROLL_UP, select_level.now);
     }
@@ -8206,7 +8212,7 @@ void HMI_Leveling_Edit()
     // SERIAL_ECHOLNPAIR("HMI_ValueStruct.Temp_Leveling_Value11:", z_values[mesh_Count.x][mesh_Count.y]);
     DWIN_Draw_Z_Offset_Float(font6x12, Color_White, Select_Color, 1, 2, value_LU_x, value_LU_y, HMI_ValueStruct.Temp_Leveling_Value); // Upper left corner coordinates
     // Draw_Dots_On_Screen(&mesh_Count,1,Select_Block_Color);
-    DO_BLOCKING_MOVE_TO_XY(mesh_Count.x * G29_X_INTERVAL + G29_X_MIN, mesh_Count.y * G29_Y_INTERVAL + G29_Y_MIN, 100);
+    DO_BLOCKING_MOVE_TO_XY(mesh_Count.x * ((G29_X_MAX - G29_X_MIN) / (CGRID_MAX_POINTS_X - 1)) + G29_X_MIN, mesh_Count.y * ((G29_Y_MAX - G29_Y_MIN) / (CGRID_MAX_POINTS_X - 1)) + G29_Y_MIN, 100);
     DO_BLOCKING_MOVE_TO_Z(z_values[mesh_Count.x][mesh_Count.y], 5);
   }
 }
@@ -11645,7 +11651,7 @@ void DWIN_HandleScreen()
   case ZHeight:
     HMI_ZHeight();
     break;  
-  case ABLMaxPoints:
+  case ABLMaxPointsID:
     HMI_ABLMaxPoints();
     break;
   case Step_value:

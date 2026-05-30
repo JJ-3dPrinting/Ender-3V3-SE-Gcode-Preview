@@ -148,6 +148,21 @@ void print_bilinear_leveling_grid()
   #define ABL_GRID_POINTS_VIRT_Y GRID_MAX_CELLS_Y * (BILINEAR_SUBDIVISIONS) + 1
   #define ABL_TEMP_POINTS_X (GRID_MAX_POINTS_X + 2)
   #define ABL_TEMP_POINTS_Y (GRID_MAX_POINTS_Y + 2)
+  #if ENABLED(DWIN_CREALITY_LCD)
+    #define ABL_ACTIVE_POINTS_X CGRID_MAX_POINTS_X
+    #define ABL_ACTIVE_POINTS_Y CGRID_MAX_POINTS_X
+    #define ABL_ACTIVE_CELLS_X  (CGRID_MAX_POINTS_X - 1)
+    #define ABL_ACTIVE_CELLS_Y  (CGRID_MAX_POINTS_X - 1)
+  #else
+    #define ABL_ACTIVE_POINTS_X GRID_MAX_POINTS_X
+    #define ABL_ACTIVE_POINTS_Y GRID_MAX_POINTS_Y
+    #define ABL_ACTIVE_CELLS_X  GRID_MAX_CELLS_X
+    #define ABL_ACTIVE_CELLS_Y  GRID_MAX_CELLS_Y
+  #endif
+  #define ABL_GRID_ACTIVE_POINTS_VIRT_X (ABL_ACTIVE_CELLS_X * (BILINEAR_SUBDIVISIONS) + 1)
+  #define ABL_GRID_ACTIVE_POINTS_VIRT_Y (ABL_ACTIVE_CELLS_Y * (BILINEAR_SUBDIVISIONS) + 1)
+  #define ABL_ACTIVE_TEMP_POINTS_X (ABL_ACTIVE_POINTS_X + 2)
+  #define ABL_ACTIVE_TEMP_POINTS_Y (ABL_ACTIVE_POINTS_Y + 2)
   float z_values_virt[ABL_GRID_POINTS_VIRT_X][ABL_GRID_POINTS_VIRT_Y];
   xy_pos_t bilinear_grid_spacing_virt;
   xy_float_t bilinear_grid_factor_virt;
@@ -162,7 +177,7 @@ void print_bilinear_leveling_grid()
   #define LINEAR_EXTRAPOLATION(E, I) ((E) * 2 - (I))
   float bed_level_virt_coord(const uint8_t x, const uint8_t y) {
     uint8_t ep = 0, ip = 1;
-    if (x > (GRID_MAX_POINTS_X) + 1 || y > (GRID_MAX_POINTS_Y) + 1) {
+    if (x > ABL_ACTIVE_POINTS_X + 1 || y > ABL_ACTIVE_POINTS_Y + 1) {
       // The requested point requires extrapolating two points beyond the mesh.
       // These values are only requested for the edges of the mesh, which are always an actual mesh point,
       // and do not require interpolation. When interpolation is not needed, this "Mesh + 2" point is
@@ -170,12 +185,12 @@ void print_bilinear_leveling_grid()
       // making this function more complex by extrapolating two points.
       return 0.0;
     }
-    if (!x || x == ABL_TEMP_POINTS_X - 1) {
+    if (!x || x == ABL_ACTIVE_TEMP_POINTS_X - 1) {
       if (x) {
-        ep = (GRID_MAX_POINTS_X) - 1;
-        ip = GRID_MAX_CELLS_X - 1;
+        ep = ABL_ACTIVE_POINTS_X - 1;
+        ip = ABL_ACTIVE_CELLS_X - 1;
       }
-      if (WITHIN(y, 1, ABL_TEMP_POINTS_Y - 2))
+      if (WITHIN(y, 1, ABL_ACTIVE_TEMP_POINTS_Y - 2))
         return LINEAR_EXTRAPOLATION(
           z_values[ep][y - 1],
           z_values[ip][y - 1]
@@ -186,12 +201,12 @@ void print_bilinear_leveling_grid()
           bed_level_virt_coord(ip + 1, y)
         );
     }
-    if (!y || y == ABL_TEMP_POINTS_Y - 1) {
+    if (!y || y == ABL_ACTIVE_TEMP_POINTS_Y - 1) {
       if (y) {
-        ep = (GRID_MAX_POINTS_Y) - 1;
-        ip = GRID_MAX_CELLS_Y - 1;
+        ep = ABL_ACTIVE_POINTS_Y - 1;
+        ip = ABL_ACTIVE_CELLS_Y - 1;
       }
-      if (WITHIN(x, 1, ABL_TEMP_POINTS_X - 2))
+      if (WITHIN(x, 1, ABL_ACTIVE_TEMP_POINTS_X - 2))
         return LINEAR_EXTRAPOLATION(
           z_values[x - 1][ep],
           z_values[x - 1][ip]
@@ -228,11 +243,11 @@ void print_bilinear_leveling_grid()
   void bed_level_virt_interpolate() {
     bilinear_grid_spacing_virt = bilinear_grid_spacing / (BILINEAR_SUBDIVISIONS);
     bilinear_grid_factor_virt = bilinear_grid_spacing_virt.reciprocal();
-    LOOP_L_N(y, GRID_MAX_POINTS_Y)
-      LOOP_L_N(x, GRID_MAX_POINTS_X)
+    LOOP_L_N(y, ABL_ACTIVE_POINTS_Y)
+      LOOP_L_N(x, ABL_ACTIVE_POINTS_X)
         LOOP_L_N(ty, BILINEAR_SUBDIVISIONS)
           LOOP_L_N(tx, BILINEAR_SUBDIVISIONS) {
-            if ((ty && y == (GRID_MAX_POINTS_Y) - 1) || (tx && x == (GRID_MAX_POINTS_X) - 1))
+            if ((ty && y == ABL_ACTIVE_POINTS_Y - 1) || (tx && x == ABL_ACTIVE_POINTS_X - 1))
               continue;
             z_values_virt[x * (BILINEAR_SUBDIVISIONS) + tx][y * (BILINEAR_SUBDIVISIONS) + ty] =
               bed_level_virt_2cmr(
@@ -254,14 +269,19 @@ void refresh_bed_level() {
 #if ENABLED(ABL_BILINEAR_SUBDIVISION)
   #define ABL_BG_SPACING(A) bilinear_grid_spacing_virt.A
   #define ABL_BG_FACTOR(A)  bilinear_grid_factor_virt.A
-  #define ABL_BG_POINTS_X   ABL_GRID_POINTS_VIRT_X
-  #define ABL_BG_POINTS_Y   ABL_GRID_POINTS_VIRT_Y
+  #define ABL_BG_POINTS_X   ABL_GRID_ACTIVE_POINTS_VIRT_X
+  #define ABL_BG_POINTS_Y   ABL_GRID_ACTIVE_POINTS_VIRT_Y
   #define ABL_BG_GRID(X,Y)  z_values_virt[X][Y]
 #else
   #define ABL_BG_SPACING(A) bilinear_grid_spacing.A
   #define ABL_BG_FACTOR(A)  bilinear_grid_factor.A
-  #define ABL_BG_POINTS_X   GRID_MAX_POINTS_X
-  #define ABL_BG_POINTS_Y   GRID_MAX_POINTS_Y
+  #if ENABLED(DWIN_CREALITY_LCD)
+    #define ABL_BG_POINTS_X CGRID_MAX_POINTS_X
+    #define ABL_BG_POINTS_Y CGRID_MAX_POINTS_X
+  #else
+    #define ABL_BG_POINTS_X GRID_MAX_POINTS_X
+    #define ABL_BG_POINTS_Y GRID_MAX_POINTS_Y
+  #endif
   #define ABL_BG_GRID(X,Y)  z_values[X][Y]
 #endif
 
