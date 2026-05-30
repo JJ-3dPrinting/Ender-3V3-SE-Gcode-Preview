@@ -1589,6 +1589,7 @@ extern uint8_t CZ_AFTER_HOMING;      // (mm) Height to move to after homing Z
 
   // Set the number of grid points per dimension.
   #define GRID_MAX_POINTS_X 7
+  extern uint8_t CGRID_MAX_POINTS_X; 
   #define GRID_MAX_POINTS_Y GRID_MAX_POINTS_X
 
   // Probe along the Y axis, advancing X after each column

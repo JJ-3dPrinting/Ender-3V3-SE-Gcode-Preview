@@ -213,7 +213,7 @@ typedef struct
   char longfilename[LONG_FILENAME_LENGTH];
 } PrintFile_InfoTypeDef;
 
-select_t select_page{0}, select_file{0}, select_print{0}, select_prepare{0}, select_control{0}, select_axis{0}, select_temp{0}, select_motion{0}, select_tune{0}, select_advset{0}, select_PLA{0}, select_ABS{0},select_TPU{0},select_PETG{0}, select_speed{0}, select_acc{0}, select_jerk{0}, select_step{0}, select_input_shaping{0}, select_linear_adv{0}, select_cextr{0},select_display{0},select_beeper{0}, select_item{0}, select_language{0}, select_hm_set_pid{0}, select_set_pid{0}, select_level{0}, select_show_pic{0};
+select_t select_page{0}, select_file{0}, select_print{0}, select_prepare{0}, select_control{0}, select_axis{0}, select_temp{0}, select_motion{0}, select_tune{0}, select_advset{0}, select_PLA{0}, select_ABS{0},select_TPU{0},select_PETG{0}, select_speed{0}, select_acc{0}, select_jerk{0}, select_step{0}, select_input_shaping{0}, select_linear_adv{0}, select_cextr{0},select_display{0},select_beeper{0}, select_item{0}, select_language{0}, select_hm_set_pid{0}, select_set_pid{0}, select_level{0}, select_show_pic{0},select_ablmaxpoints{0};
 
 uint8_t index_file = MROWS,
         index_prepare = MROWS,
@@ -225,6 +225,7 @@ uint8_t index_file = MROWS,
         index_language = MROWS + 2,
         index_temp = MROWS,
         index_pid = MROWS,
+        index_ablmaxpoints= MROWS,
         index_select = 0;
 bool dwin_abort_flag = false; // Flag to reset feedrate, return to Home
 
@@ -1440,7 +1441,8 @@ inline bool Apply_Encoder(const ENCODER_DiffState &encoder_diffState, auto &valr
 
 #define CONTROL_CASE_TEMP 1
 #define CONTROL_CASE_MOVE (CONTROL_CASE_TEMP + 1)
-#define CONTROL_CASE_SAVE (CONTROL_CASE_MOVE + ENABLED(EEPROM_SETTINGS))
+#define CONTROL_CASE_ABLMAXPOINTS (CONTROL_CASE_MOVE + 1)
+#define CONTROL_CASE_SAVE (CONTROL_CASE_ABLMAXPOINTS + ENABLED(EEPROM_SETTINGS))
 #define CONTROL_CASE_LOAD (CONTROL_CASE_SAVE + ENABLED(EEPROM_SETTINGS))
 #define CONTROL_CASE_SHOW_DATA (CONTROL_CASE_LOAD + 1) // Leveling data display
 #define CONTROL_CASE_RESET (CONTROL_CASE_SHOW_DATA + ENABLED(EEPROM_SETTINGS))
@@ -1999,6 +2001,18 @@ static void Item_Temp_AutoPID(const uint16_t line)
 #endif
   }
 }
+void Item_Control_ABLMaxPoints(const uint8_t row)
+{
+  if (HMI_flag.language < Language_Max)
+  {
+    DWIN_Draw_Label(MBASE(row)+2, F("ABL Axis Points"));
+    //DWIN_ICON_Show(HMI_flag.language, LANGUAGE_IN_STORK, 42, MBASE(row) + JPN_OFFSET);
+    //DWIN_ICON_Show(ICON, ICON_More, 208, MBASE(row) - 3);
+  }
+  Draw_Menu_Line(row, ICON_Edit_Level_Data);
+  DWIN_Draw_IntValue(true, true, 0, font8x16, Color_White, Color_Bg_Black, 2, VALUERANGE_X, MBASE(row) , CGRID_MAX_POINTS_X);
+
+}
 
 void Draw_Control_Menu()
 {
@@ -2039,6 +2053,8 @@ void Draw_Control_Menu()
 #endif
 #endif
   }
+  if(PVISI(CONTROL_CASE_ABLMAXPOINTS))
+    Item_Control_ABLMaxPoints(PSCROL(CONTROL_CASE_ABLMAXPOINTS));
   if (CVISI(CONTROL_CASE_RESET))
     DWIN_ICON_Show(HMI_flag.language, LANGUAGE_Reset, 42, CLINE(CONTROL_CASE_RESET) + JPN_OFFSET);
   if (CVISI(CONTROL_CASE_INFO))
@@ -7280,6 +7296,24 @@ void HMI_ZHeight(){
   DWIN_Draw_IntValue(true, true, 0, font8x16, Color_White, Color_Bg_Black, 3, VALUERANGE_X, MBASE(PREPARE_CASE_ZHEIGHT + MROWS - index_prepare) , HMI_ValueStruct.Z_height);
 }
 
+void HMI_ABLMaxPoints(){
+  ENCODER_DiffState encoder_diffState = Encoder_ReceiveAnalyze();
+  if (encoder_diffState == ENCODER_DIFF_NO)
+    return;
+
+  if (Apply_Encoder(encoder_diffState,  HMI_ValueStruct.ABL_MaxPoints)) {
+    EncoderRate.enabled = false;
+    LIMIT(HMI_ValueStruct.ABL_MaxPoints, 3, 10);
+    checkkey = Control;
+    DWIN_Draw_IntValue(true, true, 0, font8x16, Color_White, Color_Bg_Black, 2, VALUERANGE_X, MBASE(CONTROL_CASE_ABLMAXPOINTS + MROWS - index_control) , HMI_ValueStruct.ABL_MaxPoints);
+    CGRID_MAX_POINTS_X = HMI_ValueStruct.ABL_MaxPoints;
+    //save to eeprom
+    return;
+  }
+
+  LIMIT(HMI_ValueStruct.ABL_MaxPoints, 3, 10);
+  DWIN_Draw_IntValue(true, true, 0, font8x16, Color_White, Color_Bg_Black, 2, VALUERANGE_X, MBASE(CONTROL_CASE_ABLMAXPOINTS + MROWS - index_control) , HMI_ValueStruct.ABL_MaxPoints);
+}
 
 void Draw_CExtrude_Menu(){
   Clear_Main_Window();
@@ -7856,6 +7890,10 @@ void HMI_Control()
 
         switch (index_control)
         { // Last menu items
+        case CONTROL_CASE_ABLMAXPOINTS:
+          Item_Control_ABLMaxPoints(MBASE(MROWS));
+          Draw_Menu_Icon(MROWS, ICON_Edit_Level_Data);
+          break;
         case CONTROL_CASE_RESET:
           Item_Control_Reset(MBASE(MROWS));
           Draw_Menu_Icon(MROWS, ICON_ResumeEEPROM);
@@ -7985,6 +8023,12 @@ void HMI_Control()
       checkkey = Motion;
       select_motion.reset();
       Draw_Motion_Menu();
+      break;
+
+    case CONTROL_CASE_ABLMAXPOINTS: // Z height
+      checkkey = ABLMaxPoints;
+      DWIN_Draw_IntValue(true, true, 0, font8x16, Color_White, Color_Bg_Black, 2, VALUERANGE_X, MBASE(PREPARE_CASE_ZHEIGHT + MROWS - index_prepare) , CGRID_MAX_POINTS_X);
+      EncoderRate.enabled = true;
       break;
 #if ENABLED(EEPROM_SETTINGS)
     case CONTROL_CASE_SAVE:
@@ -11601,6 +11645,9 @@ void DWIN_HandleScreen()
   case ZHeight:
     HMI_ZHeight();
     break;  
+  case ABLMaxPoints:
+    HMI_ABLMaxPoints();
+    break;
   case Step_value:
     HMI_StepXYZE();
     break;
